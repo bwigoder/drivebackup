@@ -172,7 +172,7 @@ class Screen(QtGui.QWidget):
 		self.connect(self.accounts_list, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.updateFileListBackground)
 
 	def updateFileListBackground(self):
-		self.setStatus('Please wait - loading...')
+		self.setStatus('Please wait - loading...', 'waiting')
 		updateThread = threading.Thread(target=self.updateFileList)
 		updateThread.start()
 
@@ -261,7 +261,8 @@ class Screen(QtGui.QWidget):
 		colors = {
 			'':			'#000000',
 			'warning':	'#FF6600',
-			'success':	'#00AF33'
+			'success':	'#00AF33',
+			'waiting':	'#6699FF'
 		}
 		return colors[color]
 
@@ -319,7 +320,7 @@ class DbConfig():
 
 		# Read config file
 		self.Config = ConfigParser.ConfigParser()
-		self.Config.readfp(open('config.ini','rw'))
+		self.Config.read('config.ini')
 
 		# If no config file, create one
 		if len(self.Config.sections()) < 1:
@@ -328,6 +329,8 @@ class DbConfig():
 
 		else:
 			self.status = 'Config file loaded.'
+
+		self.Config.readfp(open('config.ini','rw'))
 
 	def edit_config_file(self, **kwargs):
 		cfgfile = open("config.ini",'w')
