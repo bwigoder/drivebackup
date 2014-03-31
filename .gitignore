@@ -37,5 +37,5 @@ nosetests.xml
 
 # DriveBackup
 creds_*
-.bak.py
+*.bak.py
 config.ini
