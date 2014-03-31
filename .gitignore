@@ -34,3 +34,8 @@ nosetests.xml
 .mr.developer.cfg
 .project
 .pydevproject
+
+# DriveBackup
+creds_
+.bak.py
+config.ini
