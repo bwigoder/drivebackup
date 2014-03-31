@@ -155,7 +155,7 @@ class Screen(QtGui.QWidget):
 		for i in config_file.Config.sections():
 			if i[:7] == 'Account':
 				# Check a config file exists
-				if os.path.isfile(os.path.join('userdata' , 'creds_' + i[8:])):
+				if os.path.isfile(os.path.join('userdata' , i[8:] + '_creds')):
 					self.accounts_list.addItem(config_file.Config.get(i, 'user_email') +  ' (' + config_file.Config.get(i, 'user_name') + ')', i[8:])
 				else:
 					self.setStatus ('Userdata file for account ' + config_file.Config.get(i, 'user_email') + ' is missing!')
@@ -179,7 +179,7 @@ class Screen(QtGui.QWidget):
 
 		# Connect to this account, if there is an account
 		if len(selected_user_id) > 0:
-			filehandler = open(os.path.join('userdata' , 'creds_' + selected_user_id), 'r')
+			filehandler = open(os.path.join('userdata' , selected_user_id + '_creds'), 'r')
 
 			self.session = Auth()
 			self.session.credentials = pickle.load(filehandler)
@@ -277,7 +277,7 @@ class Auth():
 			self.status = 'Account not added - already connected.'
 
 		# Store credentials
-		file_pi = open(os.path.join('userdata' , 'creds_' + self.person['id']), 'w')
+		file_pi = open(os.path.join('userdata' , self.person['id'] + '_creds'), 'w')
 		pickle.dump(self.credentials, file_pi)
 
 		# After any edits, we reload the config file
