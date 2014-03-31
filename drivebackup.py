@@ -171,6 +171,11 @@ class Screen(QtGui.QWidget):
 		# Set a signal to reload files on change
 		self.connect(self.accounts_list, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.updateFileListBackground)
 
+		# Select the account just added using most recent authorised session
+		if hasattr(self, 'session'):
+			index=self.accounts_list.findData(self.session.person['id'])
+			self.accounts_list.setCurrentIndex(index)
+
 	def updateFileListBackground(self):
 		self.setStatus('Please wait - loading...', 'waiting')
 		updateThread = threading.Thread(target=self.updateFileList)
