@@ -12,6 +12,7 @@ from apiclient import errors
 import httplib2
 import pickle
 import os
+import threading
 
 class DriveBackup():
 	def __init__(self):
@@ -70,7 +71,7 @@ class Screen(QtGui.QWidget):
 			# Status bar
 			#self.status_lbl = QtGui.QLabel(w)
 			#self.status_lbl.setText('Status:')
-			self.status_msg = QtGui.QPlainTextEdit(w)
+			self.status_msg = QtGui.QTextEdit(w)
 			self.status_msg.setReadOnly(True)
 			self.status_msg.setMaximumHeight(90)
 			self.setStatus("DriveBackup Initiated.")
@@ -101,8 +102,9 @@ class Screen(QtGui.QWidget):
 			self.file_list.setAlternatingRowColors(True)
 			self.file_model = Qt.QStandardItemModel(self.file_list)
 
-			# Get files
-			self.updateFileList()
+			# Folder icon
+			self.folder_icon = QtGui.QIcon()
+			self.folder_icon.addPixmap(QtGui.QPixmap(os.path.join('images', 'folder.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
 
 			self.acc_info.addWidget(self.select_files_msg)
 			self.acc_info.addWidget(self.file_list)
@@ -167,7 +169,12 @@ class Screen(QtGui.QWidget):
 		self.action_bar.addWidget(self.accounts_list, 0, 0)
 
 		# Set a signal to reload files on change
-		self.connect(self.accounts_list, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.updateFileList)
+		self.connect(self.accounts_list, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.updateFileListBackground)
+
+	def updateFileListBackground(self):
+		self.setStatus('Please wait - loading...')
+		updateThread = threading.Thread(target=self.updateFileList)
+		updateThread.start()
 
 	def updateFileList(self):
 		# Get selected account/user ID
@@ -216,12 +223,8 @@ class Screen(QtGui.QWidget):
 			folder_list = sorted(folder_list, key=lambda k: k['title'].lower())
 			file_list = sorted(file_list, key=lambda k: k['title'].lower())
 
-			# Folder icon
-			folder_icon = QtGui.QIcon()
-			folder_icon.addPixmap(QtGui.QPixmap(os.path.join('images', 'folder.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-
 			for afile in folder_list:
-				item = Qt.QStandardItem(folder_icon, afile['title'])
+				item = Qt.QStandardItem(self.folder_icon, afile['title'])
 				item.setCheckable(True)
 				self.file_model.appendRow(item)
 
@@ -232,12 +235,19 @@ class Screen(QtGui.QWidget):
 
 			self.file_list.setModel(self.file_model)
 
+			self.setStatus('File list loaded.','success')
+
+		else:
+			self.setStatus('Please select an account.','warning')			
+
 	def chooseAuth(self):
 		self.initUI('add_account')
 
-	def setStatus(self, text):
+	def setStatus(self, text, msgtype=''):
+		color = self.mapColor(msgtype)
 		ts = time.time()
 		timef = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+		self.status_msg.setTextColor(QtGui.QColor(color))
 		self.status_msg.insertPlainText( timef + ': ' + text + '\n' )
 
 		# Scroll to bottom
@@ -246,6 +256,14 @@ class Screen(QtGui.QWidget):
 	def delete_layout(self, the_layout):
 		for i in reversed(range(the_layout.count())): 
 			the_layout.itemAt(i).widget().setParent(None)
+
+	def mapColor(self, color):
+		colors = {
+			'':			'#000000',
+			'warning':	'#FF6600',
+			'success':	'#00AF33'
+		}
+		return colors[color]
 
 class Auth():
 	def __init__(self):
