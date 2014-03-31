@@ -25,6 +25,7 @@ class DriveBackup():
 
 		# Application object
 		app = QtGui.QApplication(sys.argv)
+		app.setWindowIcon(QtGui.QIcon(os.path.join('images', 'folder.png')))
 
 		# Create a window (a "widget" with no parent)
 		w = QtGui.QWidget()
