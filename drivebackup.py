@@ -69,27 +69,41 @@ class Screen(QtGui.QWidget):
 			self.welcome_msg.setMaximumHeight(25)
 
 			# Status bar
-			#self.status_lbl = QtGui.QLabel(w)
-			#self.status_lbl.setText('Status:')
 			self.status_msg = QtGui.QTextEdit(w)
 			self.status_msg.setReadOnly(True)
 			self.status_msg.setMaximumHeight(90)
 			self.setStatus("DriveBackup Initiated.")
 
-			# Authenticate Button
+			# Add Account Button
 			self.add_account_btn = Qt.QPushButton("Add Account", w)
-			self.add_account_btn.setFixedWidth(150)
+			self.add_account_btn.setFixedWidth(140)
 			app.connect(self.add_account_btn, Qt.SIGNAL("clicked()"), self.chooseAuth)
 
 			# Place objects on screen
 			self.master = QtGui.QVBoxLayout()
 			self.master.addWidget(self.welcome_msg)
-
 			self.action_bar = QtGui.QGridLayout()
+			self.action_bar_acc = QtGui.QHBoxLayout()
 
 			# List accounts
 			self.updateAccountsList()
 			self.action_bar.addWidget(self.add_account_btn, 0, 1)
+
+			# Account action bar
+			self.select_toggle_btn = Qt.QPushButton("Select All/None", w)
+			self.select_toggle_btn.setEnabled(False)
+			self.select_toggle_btn.setFixedWidth(140)
+
+			self.backup_btn = Qt.QPushButton("Backup", w)
+			self.backup_btn.setEnabled(False)
+
+			self.del_acc_btn = Qt.QPushButton("Remove Account", w)
+			self.del_acc_btn.setEnabled(False)
+			self.del_acc_btn.setFixedWidth(140)
+
+			self.action_bar_acc.addWidget(self.select_toggle_btn)
+			self.action_bar_acc.addWidget(self.backup_btn)
+			self.action_bar_acc.addWidget(self.del_acc_btn)
 
 			# Account info area
 			self.select_files_msg = QtGui.QLabel()
@@ -113,6 +127,7 @@ class Screen(QtGui.QWidget):
 			self.status_area.addWidget(self.status_msg, 1, 0)
 
 			self.master.addLayout(self.action_bar)
+			self.master.addLayout(self.action_bar_acc)
 			self.master.addLayout(self.acc_info)
 			self.master.addLayout(self.status_area)
 			w.setLayout(self.master)
@@ -151,7 +166,7 @@ class Screen(QtGui.QWidget):
 		self.accounts_list.clear()
 
 		# Add blank item
-		self.accounts_list.addItem('Please select an account.', '')
+		self.accounts_list.addItem('Please select an account or add a new one.', '')
 
 		# Add items from config
 		for i in config_file.Config.sections():
@@ -248,6 +263,9 @@ class Screen(QtGui.QWidget):
 	def chooseAuth(self):
 		self.initUI('add_account')
 
+	def delAccount(self):
+		pass
+
 	def setStatus(self, text, msgtype=''):
 		color = self.mapColor(msgtype)
 		ts = time.time()
@@ -256,7 +274,8 @@ class Screen(QtGui.QWidget):
 		self.status_msg.insertPlainText( timef + ': ' + text + '\n' )
 
 		# Scroll to bottom
-		self.status_msg.moveCursor(QtGui.QTextCursor.End)
+		#self.status_msg.moveCursor(QtGui.QTextCursor.End)
+		self.status_msg.ensureCursorVisible()
 
 	def delete_layout(self, the_layout):
 		for i in reversed(range(the_layout.count())): 
