@@ -93,6 +93,7 @@ class Screen(QtGui.QWidget):
 			self.select_toggle_btn = Qt.QPushButton("Select All/None", w)
 			self.select_toggle_btn.setEnabled(False)
 			self.select_toggle_btn.setFixedWidth(140)
+			app.connect(self.select_toggle_btn, Qt.SIGNAL("clicked()"), self.selectToggle)
 
 			self.backup_btn = Qt.QPushButton("Backup", w)
 			self.backup_btn.setEnabled(False)
@@ -184,22 +185,32 @@ class Screen(QtGui.QWidget):
 		self.action_bar.addWidget(self.accounts_list, 0, 0)
 
 		# Set a signal to reload files on change
-		self.connect(self.accounts_list, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.updateFileListBackground)
+		self.connect(self.accounts_list, QtCore.SIGNAL("currentIndexChanged(const QString&)"), self.accountChanged)
 
 		# Select the account just added using most recent authorised session
 		if hasattr(self, 'session'):
 			index=self.accounts_list.findData(self.session.person['id'])
 			self.accounts_list.setCurrentIndex(index)
 
-	def updateFileListBackground(self):
+	def accountChanged(self):
+		self.selected_item_in_list = self.accounts_list.currentIndex()
+
+		# Update file list in background
 		self.setStatus('Please wait - loading...', 'waiting')
 		updateThread = threading.Thread(target=self.updateFileList)
 		updateThread.start()
 
+	def updateButtons(self):
+		# Enable/disable buttons
+		if self.selected_item_in_list != 0:
+			self.select_toggle_btn.setEnabled(True)
+		else:
+			self.select_toggle_btn.setEnabled(False)
+
+
 	def updateFileList(self):
 		# Get selected account/user ID
-		selected_item_in_list = self.accounts_list.currentIndex()
-		selected_user_id = str(self.accounts_list.itemData(selected_item_in_list).toString())
+		selected_user_id = str(self.accounts_list.itemData(self.selected_item_in_list).toString())
 		
 		# Remove all files in list
 		self.file_model.clear()
@@ -260,6 +271,9 @@ class Screen(QtGui.QWidget):
 		else:
 			self.setStatus('Please select an account.','warning')			
 
+		# Now update buttons
+		self.updateButtons()
+
 	def chooseAuth(self):
 		self.initUI('add_account')
 
@@ -289,6 +303,9 @@ class Screen(QtGui.QWidget):
 			'waiting':	'#6699FF'
 		}
 		return colors[color]
+
+	def selectToggle(self):
+		pass
 
 class Auth():
 	def __init__(self):
