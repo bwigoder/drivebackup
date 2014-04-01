@@ -89,6 +89,17 @@ class Screen(QtGui.QWidget):
 			self.updateAccountsList()
 			self.action_bar.addWidget(self.add_account_btn, 0, 1)
 
+			# Account info area
+			self.select_files_msg = QtGui.QLabel()
+			self.select_files_msg.setText('Select files + folders for automated backup:')
+
+			self.acc_info = QtGui.QGridLayout()
+			self.file_list = Qt.QListView(self)
+			self.file_list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+			self.file_list.setMaximumSize(QtCore.QSize(16777215, 150))
+			self.file_list.setAlternatingRowColors(True)
+			self.file_model = Qt.QStandardItemModel(self.file_list)
+
 			# Account action bar
 			self.select_toggle_btn = Qt.QPushButton("Select All/None", w)
 			self.select_toggle_btn.setEnabled(False)
@@ -101,21 +112,11 @@ class Screen(QtGui.QWidget):
 			self.del_acc_btn = Qt.QPushButton("Remove Account", w)
 			self.del_acc_btn.setEnabled(False)
 			self.del_acc_btn.setFixedWidth(140)
+			app.connect(self.del_acc_btn, Qt.SIGNAL("clicked()"), self.delAccount)
 
 			self.action_bar_acc.addWidget(self.select_toggle_btn)
 			self.action_bar_acc.addWidget(self.backup_btn)
 			self.action_bar_acc.addWidget(self.del_acc_btn)
-
-			# Account info area
-			self.select_files_msg = QtGui.QLabel()
-			self.select_files_msg.setText('Select files + folders for automated backup:')
-
-			self.acc_info = QtGui.QGridLayout()
-			self.file_list = Qt.QListView(self)
-			self.file_list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
-			self.file_list.setMaximumSize(QtCore.QSize(16777215, 150))
-			self.file_list.setAlternatingRowColors(True)
-			self.file_model = Qt.QStandardItemModel(self.file_list)
 
 			# Folder icon
 			self.folder_icon = QtGui.QIcon()
@@ -204,9 +205,10 @@ class Screen(QtGui.QWidget):
 		# Enable/disable buttons
 		if self.selected_item_in_list != 0:
 			self.select_toggle_btn.setEnabled(True)
+			self.del_acc_btn.setEnabled(True)
 		else:
 			self.select_toggle_btn.setEnabled(False)
-
+			self.del_acc_btn.setEnabled(False)
 
 	def updateFileList(self):
 		# Get selected account/user ID
@@ -278,7 +280,7 @@ class Screen(QtGui.QWidget):
 		self.initUI('add_account')
 
 	def delAccount(self):
-		pass
+		ret = QtGui.QMessageBox.information(self, "Remove Account", "This feature is coming soon.", QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
 
 	def setStatus(self, text, msgtype=''):
 		color = self.mapColor(msgtype)
