@@ -99,6 +99,7 @@ class Screen(QtGui.QWidget):
 			self.file_list.setMaximumSize(QtCore.QSize(16777215, 150))
 			self.file_list.setAlternatingRowColors(True)
 			self.file_model = Qt.QStandardItemModel(self.file_list)
+			self.file_model.itemChanged.connect(self.onFilesChanged)
 
 			# Account action bar
 			self.select_toggle_btn = Qt.QPushButton("Select All/None", w)
@@ -210,6 +211,10 @@ class Screen(QtGui.QWidget):
 			self.select_toggle_btn.setEnabled(False)
 			self.del_acc_btn.setEnabled(False)
 
+		self.backup_btn.setEnabled(False)
+		if self.countChecked() > 0:
+			self.backup_btn.setEnabled(True)
+
 	def updateFileList(self):
 		# Get selected account/user ID
 		selected_user_id = str(self.accounts_list.itemData(self.selected_item_in_list).toString())
@@ -279,6 +284,9 @@ class Screen(QtGui.QWidget):
 		# Now update buttons
 		self.updateButtons()
 
+	def onFilesChanged(self):
+		self.updateButtons()
+
 	def chooseAuth(self):
 		self.initUI('add_account')
 
@@ -310,20 +318,21 @@ class Screen(QtGui.QWidget):
 		return colors[color]
 
 	def selectToggle(self):
-		# Check total checked
-		total_checked = 0
-		for i in range(self.total_files_and_folders):
-			if self.file_model.item(i).checkState() == 2:
-				total_checked += 1	
-
 		# Decide how to toggle
 		newstate = 0
-		if total_checked < self.total_files_and_folders:
+		if self.countChecked() < self.total_files_and_folders:
 			newstate = 2
 
 		# Iterate through each file, to change the checked state
 		for i in range(self.total_files_and_folders):
 			self.file_model.item(i).setCheckState(newstate)
+
+	def countChecked(self):
+		total_checked = 0
+		for i in range(self.total_files_and_folders):
+			if self.file_model.item(i).checkState() == 2:
+				total_checked += 1
+		return total_checked
 
 class Auth():
 	def __init__(self):
