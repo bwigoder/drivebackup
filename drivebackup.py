@@ -109,10 +109,12 @@ class Screen(QtGui.QWidget):
 
 			self.backup_btn = Qt.QPushButton("Backup", w)
 			self.backup_btn.setEnabled(False)
+			app.connect(self.backup_btn, Qt.SIGNAL("clicked()"), self.backupClicked)
 
 			self.del_acc_btn = Qt.QPushButton("Remove Account", w)
 			self.del_acc_btn.setEnabled(False)
 			self.del_acc_btn.setFixedWidth(140)
+			self.del_acc_btn.setAutoFillBackground(True)
 			app.connect(self.del_acc_btn, Qt.SIGNAL("clicked()"), self.delAccount)
 
 			self.action_bar_acc.addWidget(self.select_toggle_btn)
@@ -261,6 +263,9 @@ class Screen(QtGui.QWidget):
 			folder_list = sorted(folder_list, key=lambda k: k['title'].lower())
 			file_list = sorted(file_list, key=lambda k: k['title'].lower())
 
+			# Create a combined list (shallow copy)
+			self.all_files_and_folders = folder_list + file_list
+
 			for afile in folder_list:
 				item = Qt.QStandardItem(self.folder_icon, afile['title'])
 				item.setCheckable(True)
@@ -283,6 +288,10 @@ class Screen(QtGui.QWidget):
 
 		# Now update buttons
 		self.updateButtons()
+
+	def backupClicked(self):
+			items_for_backup = self.getChecked()
+			
 
 	def onFilesChanged(self):
 		self.updateButtons()
@@ -333,6 +342,13 @@ class Screen(QtGui.QWidget):
 			if self.file_model.item(i).checkState() == 2:
 				total_checked += 1
 		return total_checked
+
+	def getChecked(self):
+		selected_for_backup = []
+		for i in range(self.total_files_and_folders):
+			if self.file_model.item(i).checkState() == 2:
+				selected_for_backup.append(self.all_files_and_folders[i])
+		return selected_for_backup
 
 class Auth():
 	def __init__(self):
