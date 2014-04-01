@@ -273,6 +273,9 @@ class Screen(QtGui.QWidget):
 		else:
 			self.setStatus('Please select an account.','warning')			
 
+		# Update number of files + folders
+		self.total_files_and_folders = self.file_model.rowCount()
+
 		# Now update buttons
 		self.updateButtons()
 
@@ -307,7 +310,20 @@ class Screen(QtGui.QWidget):
 		return colors[color]
 
 	def selectToggle(self):
-		pass
+		# Check total checked
+		total_checked = 0
+		for i in range(self.total_files_and_folders):
+			if self.file_model.item(i).checkState() == 2:
+				total_checked += 1	
+
+		# Decide how to toggle
+		newstate = 0
+		if total_checked < self.total_files_and_folders:
+			newstate = 2
+
+		# Iterate through each file, to change the checked state
+		for i in range(self.total_files_and_folders):
+			self.file_model.item(i).setCheckState(newstate)
 
 class Auth():
 	def __init__(self):
