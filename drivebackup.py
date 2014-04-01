@@ -127,8 +127,8 @@ class Screen(QtGui.QWidget):
 			self.status_area.addWidget(self.status_msg, 1, 0)
 
 			self.master.addLayout(self.action_bar)
-			self.master.addLayout(self.action_bar_acc)
 			self.master.addLayout(self.acc_info)
+			self.master.addLayout(self.action_bar_acc)
 			self.master.addLayout(self.status_area)
 			w.setLayout(self.master)
 
