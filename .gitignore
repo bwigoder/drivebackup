@@ -39,3 +39,4 @@ nosetests.xml
 *_creds
 *.bak.py
 config.ini
+backups/
