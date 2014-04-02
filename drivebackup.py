@@ -327,9 +327,9 @@ class Screen(QtGui.QWidget):
 				self.setStatus('No write access to backup location: ' + sel_backup_location,'error')
 			else:
 				# Begin backup
-				self.beginBackup(self.selected_user_id, items_for_backup)
+				self.beginBackup(sel_backup_location, items_for_backup)
 
-	def beginBackup(self, account, items_for_backup):
+	def beginBackup(self, sel_backup_location, items_for_backup):
 		# Disable UI
 		self.accountUI(False)
 
@@ -341,6 +341,13 @@ class Screen(QtGui.QWidget):
 
 		total_items = len(items_for_backup)
 
+		# Actual backup location
+		full_backup_location = os.path.join(sel_backup_location, self.selected_user_id)
+
+		# Create this folder if it doesn't exist
+		if not os.path.exists(full_backup_location):
+			os.makedirs(full_backup_location)
+
 		# Backup loop
 		i = 0;
 		for item in items_for_backup:
@@ -348,7 +355,11 @@ class Screen(QtGui.QWidget):
 			app.processEvents()
 
 			# Backup files
-			time.sleep(0.1)
+			if item['mimeType'] == 'application/vnd.google-apps.folder':
+				pass
+
+			else:
+				pass
 
 			# Update progress bar
 			self.progress_bar.setProperty("value", ( float(i) / total_items * 100 ) )
