@@ -84,6 +84,7 @@ class Screen(QtGui.QWidget):
 			self.master.addWidget(self.welcome_msg)
 			self.action_bar = QtGui.QGridLayout()
 			self.action_bar_acc = QtGui.QHBoxLayout()
+			self.progress_bar_row = QtGui.QGridLayout()
 
 			# List accounts
 			self.updateAccountsList()
@@ -95,7 +96,7 @@ class Screen(QtGui.QWidget):
 
 			self.acc_info = QtGui.QGridLayout()
 			self.file_list = Qt.QListView(self)
-			self.file_list.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
+			self.file_list.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
 			self.file_list.setMaximumSize(QtCore.QSize(16777215, 150))
 			self.file_list.setAlternatingRowColors(True)
 			self.file_model = Qt.QStandardItemModel(self.file_list)
@@ -121,6 +122,12 @@ class Screen(QtGui.QWidget):
 			self.action_bar_acc.addWidget(self.backup_btn)
 			self.action_bar_acc.addWidget(self.del_acc_btn)
 
+			# Progress bar
+			self.progress_bar = QtGui.QProgressBar(self)
+			self.progress_bar.setGeometry(30, 40, 200, 25)
+			self.progress_bar.hide()
+			self.progress_bar_row.addWidget(self.progress_bar, 0, 1)
+
 			# Folder icon
 			self.folder_icon = QtGui.QIcon()
 			self.folder_icon.addPixmap(QtGui.QPixmap(os.path.join('images', 'folder.png')), QtGui.QIcon.Normal, QtGui.QIcon.Off)
@@ -134,6 +141,7 @@ class Screen(QtGui.QWidget):
 			self.master.addLayout(self.action_bar)
 			self.master.addLayout(self.acc_info)
 			self.master.addLayout(self.action_bar_acc)
+			self.master.addLayout(self.progress_bar_row)
 			self.master.addLayout(self.status_area)
 			w.setLayout(self.master)
 
@@ -314,15 +322,48 @@ class Screen(QtGui.QWidget):
 			# Store it in config file
 			config_file.edit_config_file(reason='store_backup_location', user_id = self.selected_user_id, backup_location = sel_backup_location)
 
-			# Check that we have write
+			# Check that we have write access
 			if os.access(sel_backup_location, os.W_OK) != True:
 				self.setStatus('No write access to backup location: ' + sel_backup_location,'error')
 			else:
 				# Begin backup
-				beginBackup(self.selected_user_id)
+				self.beginBackup(self.selected_user_id, items_for_backup)
 
-	def beginBackup(self, account):
-		pass
+	def beginBackup(self, account, items_for_backup):
+		# Disable UI
+		self.accountUI(False)
+
+		# Show progress bar
+		self.progress_bar.show()
+
+		# Update status
+		self.setStatus('Backup started...','waiting')
+
+		total_items = len(items_for_backup)
+
+		# Backup loop
+		i = 0;
+		for item in items_for_backup:
+			# Force GUI to update
+			app.processEvents()
+
+			# Backup files
+			time.sleep(0.1)
+
+			# Update progress bar
+			self.progress_bar.setProperty("value", ( float(i) / total_items * 100 ) )
+			i += 1
+
+		# -- Backup complete --
+		# Remove progress bar
+		self.progress_bar.hide()
+		self.progress_bar.setProperty("value", 0)
+
+		# Update status
+		self.setStatus('Backup complete!','success')
+
+		# Enable UI
+		self.accountUI(True)
 
 	def onFilesChanged(self):
 		self.updateButtons()
@@ -333,16 +374,25 @@ class Screen(QtGui.QWidget):
 	def delAccount(self):
 		ret = QtGui.QMessageBox.information(self, "Remove Account", "This feature is coming soon.", QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
 
+	def accountUI(self, toggle):
+		# Toggle account buttons
+		buttons = [self.select_toggle_btn, self.backup_btn, self.del_acc_btn, self.add_account_btn, self.accounts_list]
+
+		for b in buttons:
+			b.setEnabled(toggle)
+
+		# Prevent checkboxes from being deselected/selected
+
 	def setStatus(self, text, msgtype=''):
+		# Scroll to bottom
+		self.status_msg.moveCursor(QtGui.QTextCursor.End)
+		self.status_msg.ensureCursorVisible()
+
 		color = self.mapColor(msgtype)
 		ts = time.time()
 		timef = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
 		self.status_msg.setTextColor(QtGui.QColor(color))
 		self.status_msg.insertPlainText( timef + ': ' + text + '\n' )
-
-		# Scroll to bottom
-		#self.status_msg.moveCursor(QtGui.QTextCursor.End)
-		self.status_msg.ensureCursorVisible()
 
 	def delete_layout(self, the_layout):
 		for i in reversed(range(the_layout.count())): 
