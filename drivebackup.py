@@ -219,14 +219,14 @@ class Screen(QtGui.QWidget):
 
 	def updateFileList(self):
 		# Get selected account/user ID
-		selected_user_id = str(self.accounts_list.itemData(self.selected_item_in_list).toString())
+		self.selected_user_id = str(self.accounts_list.itemData(self.selected_item_in_list).toString())
 		
 		# Remove all files in list
 		self.file_model.clear()
 
 		# Connect to this account, if there is an account
-		if len(selected_user_id) > 0:
-			filehandler = open(os.path.join('userdata' , selected_user_id + '_creds'), 'r')
+		if len(self.selected_user_id) > 0:
+			filehandler = open(os.path.join('userdata' , self.selected_user_id + '_creds'), 'r')
 
 			self.session = Auth()
 			self.session.credentials = pickle.load(filehandler)
@@ -290,8 +290,39 @@ class Screen(QtGui.QWidget):
 		self.updateButtons()
 
 	def backupClicked(self):
-			items_for_backup = self.getChecked()
-			
+		# Files to be backup up
+		items_for_backup = self.getChecked()
+
+		sel_backup_location = ''
+
+		# Decide where to store backups
+		if config_file.Config.has_option('Account-' + self.selected_user_id, 'backup_location') != True:
+			ret = QtGui.QMessageBox.information(self, "First time backup", "You will now be prompted to select a location to store the backed up files.", QtGui.QMessageBox.Ok, QtGui.QMessageBox.Cancel)
+			if ret == QtGui.QMessageBox.Ok:
+				sel_backup_location = str(QtGui.QFileDialog.getExistingDirectory(None, "Select Backup Directory",'backups',QtGui.QFileDialog.ShowDirsOnly))
+
+		else:
+			sel_backup_location = config_file.Config.get('Account-' + self.selected_user_id, 'backup_location')
+
+		# Ensure that we have a backup location
+		if sel_backup_location != '':
+
+			# Workaround 'untitled bug' on OSX
+			if sel_backup_location[-8:] == 'untitled':
+				sel_backup_location = sel_backup_location[:-8]
+
+			# Store it in config file
+			config_file.edit_config_file(reason='store_backup_location', user_id = self.selected_user_id, backup_location = sel_backup_location)
+
+			# Check that we have write
+			if os.access(sel_backup_location, os.W_OK) != True:
+				self.setStatus('No write access to backup location: ' + sel_backup_location,'error')
+			else:
+				# Begin backup
+				beginBackup(self.selected_user_id)
+
+	def beginBackup(self, account):
+		pass
 
 	def onFilesChanged(self):
 		self.updateButtons()
@@ -320,6 +351,7 @@ class Screen(QtGui.QWidget):
 	def mapColor(self, color):
 		colors = {
 			'':			'#000000',
+			'error':	'#FF0000',
 			'warning':	'#FF6600',
 			'success':	'#00AF33',
 			'waiting':	'#6699FF'
@@ -427,6 +459,9 @@ class DbConfig():
 			self.Config.add_section('Account-'+kwargs['user_id'])
 			self.Config.set('Account-'+kwargs['user_id'], 'user_name', kwargs['user_name'])
 			self.Config.set('Account-'+kwargs['user_id'], 'user_email', kwargs['user_email'])
+
+		elif kwargs['reason'] == 'store_backup_location':
+			self.Config.set('Account-'+kwargs['user_id'], 'backup_location', kwargs['backup_location'])
 
 		self.Config.write(cfgfile)
 		cfgfile.close()
