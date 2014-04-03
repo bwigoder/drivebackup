@@ -13,6 +13,8 @@ import httplib2
 import pickle
 import os
 import threading
+import copy
+import pdb
 
 class DriveBackup():
 	def __init__(self):
@@ -247,6 +249,7 @@ class Screen(QtGui.QWidget):
 				try:
 					param = {}
 					param['q'] = "'root' in parents"
+					param['maxResults'] = 1000
 					if page_token:
 						param['pageToken'] = page_token
 					# Google returns files and folders without discriminating
@@ -335,8 +338,6 @@ class Screen(QtGui.QWidget):
 
 		# Show progress bar
 		self.progress_bar.show()
-		#self.progress_bar.setProperty("value", 0)
-		#self.progress_bar.setLabelText(item['Please wait...'])
 
 		# Update status
 		self.setStatus('Backup started...','waiting')
@@ -352,39 +353,126 @@ class Screen(QtGui.QWidget):
 
 		# Backup loop
 		i = 0;
+
+		# Load version control file
+		vc_file = os.path.join('userdata' , self.session.person['id'] + '_version_control')
+		if os.path.isfile(vc_file):
+			self.version_control = pickle.load(open(vc_file, "rb"))
+		else:
+			self.version_control = {}
+
 		for item in items_for_backup:
 			# Force GUI to update
 			app.processEvents()
 
 			# Backup files
+			extension = ''
+
 			# Folder download
 			if item['mimeType'] == 'application/vnd.google-apps.folder':
-				pass
+				# Get contents of folder and add to items for backup
+				page_token = None
+
+				while True:
+					try:
+						param = {}
+						param['folderId'] = item['id']
+						if page_token:
+							param['pageToken'] = page_token
+							param['maxResults'] = 1000
+						children = self.session.drive_service.children().list(**param).execute()
+
+						for child in children.get('items', []):
+							# Force GUI to update
+							app.processEvents()
+
+							# Get the child files and folders
+							try:
+								file = self.session.drive_service.files().get(fileId=child['id']).execute()
+							except errors.HttpError, error:
+								print 'An error occurred: %s' % error
+
+							# Create the directory tree
+							if 'dirtree' in item:
+								file.setdefault('dirtree', item['dirtree'])
+
+							file.setdefault('dirtree', [])
+
+							# Add this directory if not already in tree
+							if item['title'] not in file['dirtree']:
+								file['dirtree'].append(item['title'])
+
+							# Add file to list of items to be backed up
+							items_for_backup.append(file)
+							total_items += 1
+							self.progress_bar.setLabelText('Discovering files: ' + file['title'])
+
+						page_token = children.get('nextPageToken')
+						if not page_token:
+							break
+
+					except errors.HttpError, error:
+						print 'An error occurred: %s' % error
+						break
 
 			else:
 				# Remove any invalid characters from the filename
 				item['title'] = item['title'].replace('/', '__')
 
-				# Straightforward file download
+				# Fetch the directory tree
+				dirtree = ''
+				if 'dirtree' in item:
+					for directory in item['dirtree']:
+						dirtree = os.path.join(dirtree, directory)
+
+				# Check if the md5 checksum matches, skip if it does
 				if 'downloadUrl' in item:
-					resp, content = self.session.drive_service._http.request(item['downloadUrl'])
-					if resp.status == 200:
-						filename = os.path.join(full_backup_location, item['title'])
+					version_identifier = item['md5Checksum']
+					extension = ''
 
-				# Google Doc formats - export
 				elif 'exportLinks' in item:
-					resp, content = self.session.drive_service._http.request(item['exportLinks']['application/pdf'])
-					if resp.status == 200:
-						filename = os.path.join(full_backup_location, item['title'] + '.pdf')
+					version_identifier = item['etag']
+					extension = '.pdf'
 
-				fo = open(filename, 'w')
-				fo.write(content)
-				fo.close()
+				filename = ''
+				file_identifier = os.path.join(dirtree,item['title'])
+				full_path_to_file = os.path.join(full_backup_location, dirtree, item['title'] + extension)
+
+				# If file hashes match and file is
+				if file_identifier in self.version_control and self.version_control[file_identifier] == version_identifier and os.path.isfile(full_path_to_file):
+					print 'file skipped'
+
+				# If md5 does not match, download the file
+				else:
+					# Straightforward file download
+					if 'downloadUrl' in item:
+						resp, content = self.session.drive_service._http.request(item['downloadUrl'])
+
+					# Google Doc formats - export
+					elif 'exportLinks' in item:
+						resp, content = self.session.drive_service._http.request(item['exportLinks']['application/pdf'])
+
+					if resp.status == 200:
+						filename = full_path_to_file
+
+					# Create directory if it doesn't exist
+					if not os.path.exists(os.path.dirname(filename)):
+						os.makedirs(os.path.dirname(filename))
+
+					fo = open(filename, 'w')
+					fo.write(content)
+					fo.close()
+
+					# Version control
+					self.version_control[file_identifier] = version_identifier
+
+					# Update version control file, in case operations are interrupted
+					pickle.dump(self.version_control, open(vc_file, 'wb'))
 
 			# Update progress bar
 			progress = float(i) / total_items * 100
 			self.progress_bar.setProperty("value", progress )
-			self.progress_bar.setLabelText(item['title'])
+			self.progress_bar.setLabelText(item['title'] + extension)
 			i += 1
 
 			# Listen out for cancelled operation
