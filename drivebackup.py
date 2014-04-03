@@ -32,7 +32,7 @@ class DriveBackup():
 		w = QtGui.QWidget()
 
 		# Set window dimensions
-		w.setFixedSize(600, 400)
+		w.setFixedSize(540, 500)
 
 		# Set window position (center)
 		screen = QtGui.QDesktopWidget().screenGeometry()
@@ -123,7 +123,7 @@ class Screen(QtGui.QWidget):
 			self.action_bar_acc.addWidget(self.del_acc_btn)
 
 			# Progress bar
-			self.progress_bar = QtGui.QProgressBar(self)
+			self.progress_bar = QtGui.QProgressDialog()
 			self.progress_bar.setGeometry(30, 40, 200, 25)
 			self.progress_bar.hide()
 			self.progress_bar_row.addWidget(self.progress_bar, 0, 1)
@@ -335,6 +335,8 @@ class Screen(QtGui.QWidget):
 
 		# Show progress bar
 		self.progress_bar.show()
+		#self.progress_bar.setProperty("value", 0)
+		#self.progress_bar.setLabelText(item['Please wait...'])
 
 		# Update status
 		self.setStatus('Backup started...','waiting')
@@ -355,23 +357,48 @@ class Screen(QtGui.QWidget):
 			app.processEvents()
 
 			# Backup files
+			# Folder download
 			if item['mimeType'] == 'application/vnd.google-apps.folder':
 				pass
 
 			else:
-				pass
+				# Remove any invalid characters from the filename
+				item['title'] = item['title'].replace('/', '__')
+
+				# Straightforward file download
+				if 'downloadUrl' in item:
+					resp, content = self.session.drive_service._http.request(item['downloadUrl'])
+					if resp.status == 200:
+						filename = os.path.join(full_backup_location, item['title'])
+
+				# Google Doc formats - export
+				elif 'exportLinks' in item:
+					resp, content = self.session.drive_service._http.request(item['exportLinks']['application/pdf'])
+					if resp.status == 200:
+						filename = os.path.join(full_backup_location, item['title'] + '.pdf')
+
+				fo = open(filename, 'w')
+				fo.write(content)
+				fo.close()
 
 			# Update progress bar
-			self.progress_bar.setProperty("value", ( float(i) / total_items * 100 ) )
+			progress = float(i) / total_items * 100
+			self.progress_bar.setProperty("value", progress )
+			self.progress_bar.setLabelText(item['title'])
 			i += 1
 
-		# -- Backup complete --
-		# Remove progress bar
-		self.progress_bar.hide()
-		self.progress_bar.setProperty("value", 0)
+			# Listen out for cancelled operation
+			if self.progress_bar.wasCanceled():
+				break
 
 		# Update status
-		self.setStatus('Backup complete!','success')
+		if i == total_items:
+			self.setStatus('Backup complete!','success')
+		else:
+			self.setStatus('Backup cancelled: ' + str(round(progress, 2)) + '% completed.','warning')
+
+		# Set progress to complete (it will auto-hide + reset)
+		self.progress_bar.setProperty("value", 100)
 
 		# Enable UI
 		self.accountUI(True)
